@@ -1,6 +1,8 @@
 import numpy as np
-from keras.layers import Layer
-from keras.backend import tensorflow as tf
+import tensorflow as tf
+import tensorflow_probability as tfp
+from tensorflow.keras.layers import Layer
+import tensorflow.keras.backend as K
 
 
 class AddPoissonNoise(Layer):
@@ -101,9 +103,9 @@ class SampleMultivariateGaussian(Layer):
         self.return_KL = return_KL
 
         if full_cov:
-            self.distrib = tf.contrib.distributions.MultivariateNormalFullCovariance
+            self.distrib = tfp.distributions.MultivariateNormalFullCovariance
         else:
-            self.distrib = tf.contrib.distributions.MultivariateNormalDiag
+            self.distrib = tfp.distributions.MultivariateNormalDiag
 
         super(SampleMultivariateGaussian,
               self).__init__(*args, **kwargs)
@@ -112,24 +114,23 @@ class SampleMultivariateGaussian(Layer):
         """
         inputs = if full_cov is True, [mu, cov] where mu is the mean vector and cov the covariance matrix, otherwise [mu,sigma] where sigma is the std.
         """
-        if full_cov:
+        if self.full_cov:
             z_mu, z_cov = inputs
-            dist_z = tf.contrib.distributions.MultivariateNormalFullCovariance(
-                loc=z_mu, covariance_matrix=z_cov)
-            dist_0 = tf.contrib.distributions.MultivariateNormalFullCovariance(
+            dist_z = self.distrib(loc=z_mu, covariance_matrix=z_cov)
+            dist_0 = self.distrib(
                 loc=tf.zeros_like(z_mu), covariance_matrix=tf.identity(z_cov))
 
         else:
             z_mu, z_sigma = inputs
-            dist_z = tf.contrib.distributions.MultivariateNormalDiag(
+            dist_z = self.distrib(
                 loc=z_mu, scale_diag=z_sigma)
-            dist_0 = tf.contrib.distributions.MultivariateNormalDiag(
+            dist_0 = self.distrib(
                 loc=tf.zeros_like(z_mu), scale_diag=tf.ones_like(z_sigma))
 
         z = dist_z.sample()
 
         if self.add_KL or self.return_KL:
-            kl_divergence = tf.distributions.kl_divergence(
+            kl_divergence = tfp.distributions.kl_divergence(
                 dist_z, dist_0, name='KL_divergence_full_cov')
             if self.add_KL:
                 self.add_loss(K.mean(kl_divergence), inputs=inputs)
