@@ -122,10 +122,9 @@ class SampleMultivariateGaussian(Layer):
 
         else:
             z_mu, z_sigma = inputs
-            dist_z = self.distrib(
-                loc=z_mu, scale_diag=z_sigma)
-            dist_0 = self.distrib(
-                loc=tf.zeros_like(z_mu), scale_diag=tf.ones_like(z_sigma))
+            dist_z = self.distrib(loc=z_mu, scale_diag=z_sigma)
+            dist_0 = self.distrib(loc=tf.zeros_like(
+                z_mu), scale_diag=tf.ones_like(z_sigma))
 
         z = dist_z.sample()
 
