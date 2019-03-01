@@ -40,6 +40,8 @@ class AddPoissonNoise(Layer):
 
         if sky_level is None:
             self.sky_level = np.array([43, 234, 543, 900, 1388, 1807])
+        else:
+            self.sky_level = sky_level
 
         if N_exposures is None:
             self.N_exposures = 100
@@ -48,7 +50,7 @@ class AddPoissonNoise(Layer):
 
     def call(self, inputs, training=None):
         def noised():
-            return (tf.random_poisson((inputs + self.sky_level) * self.N_exposures, [1])[0]) / N_exposures - self.sky_level
+            return ((tf.random_poisson((inputs + self.sky_level) * self.N_exposures, [1])[0]) / self.N_exposures) - self.sky_level
         return K.in_train_phase(noised, inputs, training=training or not(self.training_only))
 
     def get_config(self):

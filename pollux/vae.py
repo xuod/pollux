@@ -1,13 +1,21 @@
 from IPython.display import clear_output, set_matplotlib_formats
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Conv2D, Input
 from tensorflow.keras.callbacks import Callback
-import scipy
+import tensorflow.keras.backend as K
 
+from . import layers
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+import scipy
 
 def build_vae(encoder, decoder, full_cov=False):
     input_vae = Input(shape=encoder.input.shape[1:])
     output_encoder = encoder(input_vae)
 
-    z, Dkl = pollux.layers.SampleMultivariateGaussian(full_cov=full_cov, add_KL=True, return_KL=True)(output_encoder)
+    z, Dkl = layers.SampleMultivariateGaussian(full_cov=full_cov, add_KL=True, return_KL=True)(output_encoder)
 
     vae = Model(input_vae, decoder(z))
     vae_utils = Model(input_vae, [*encoder(input_vae), z, Dkl, decoder(z)])
@@ -20,11 +28,15 @@ def vae_rec_loss(x, x_decoded_mean):
     # kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1) # KL divergence: from input image to latent variable
     # return xent_loss + kl_loss
     return K.mean(xent_loss)
+#     return 64*64*10 * K.mean(K.binary_crossentropy(x, x_decoded_mean))
 
 
 class VAEHistory(Callback):
-    def __init__(self, xval_sub, vae_utils, latent_dim):
+    def __init__(self, xval_sub, vae_utils, latent_dim, plot_bands=[5,6,7]):
         self.xval_sub = xval_sub
+        self.latent_dim = latent_dim
+        self.plot_bands = plot_bands
+        self.vae_utils = vae_utils
         
         self.counter = 0
         
@@ -35,12 +47,9 @@ class VAEHistory(Callback):
         
         self.zz = np.linspace(-5,5,1000)
         self.gauss = scipy.stats.norm.pdf(self.zz)
-        
-#         self.sess = tf.Session()
-        
+                
         self.colors = mpl.cm.jet(np.linspace(0,1,latent_dim))
         
-        self.vae_utils = vae_utils
         
     def mask_outliers(points_plop, thresh=3.5):
         """
@@ -112,7 +121,7 @@ class VAEHistory(Callback):
         ax.set_title('D_KL')
         #ax.set_ylim(np.min(self.D_KL), self.D_KL[0]*1.05)
 
-        for dim in range(latent_dim):
+        for dim in range(self.latent_dim):
             c = self.colors[dim]
             _ = axes[2].hist(mu[:,dim], bins=50, histtype='step', color=c, label=str(dim), density=True)
             _ = axes[3].hist(sigma[:,dim], bins=50, log=False, histtype='step', color=c, label=str(dim), density=True)
@@ -128,12 +137,12 @@ class VAEHistory(Callback):
         
         idx = np.random.randint(0,len(self.xval_sub))#, size=1)
         ax = axes[5]
-        im = ax.imshow(self.xval_sub[idx])
+        im = ax.imshow(self.xval_sub[idx][:,:,self.plot_bands])
         ax.set_title('input')
         ax.axis('off')
         
         ax = axes[6]
-        im = ax.imshow(out[idx])
+        im = ax.imshow(out[idx][:,:,self.plot_bands])
         ax.set_title('input')
         ax.axis('off')
 

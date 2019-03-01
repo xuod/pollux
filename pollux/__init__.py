@@ -1,1 +1,1 @@
-from . import activations, layers
+from . import activations, layers, vae
