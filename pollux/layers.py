@@ -94,7 +94,7 @@ class SampleMultivariateGaussian(Layer):
     Samples from a multivariate Gaussian given a mean and a full covariance matrix or just diagonal std.
     """
 
-    def __init__(self, full_cov, add_KL, return_KL, *args, **kwargs):
+    def __init__(self, full_cov, add_KL, return_KL, coeff_KL=1.0, *args, **kwargs):
         """
         full_cov: whether to use a full covariance matrix or just the diagonal.
         add_KL: boolean, whether to add the (sample average) KL divergence of the input distribution with respect to a standard Gaussian
@@ -103,6 +103,7 @@ class SampleMultivariateGaussian(Layer):
         self.full_cov = full_cov
         self.add_KL = add_KL
         self.return_KL = return_KL
+        self.coeff_KL = coeff_KL
 
         if full_cov:
             self.distrib = tfp.distributions.MultivariateNormalFullCovariance
@@ -134,7 +135,7 @@ class SampleMultivariateGaussian(Layer):
             kl_divergence = tfp.distributions.kl_divergence(
                 dist_z, dist_0, name='KL_divergence_full_cov')
             if self.add_KL:
-                self.add_loss(K.mean(kl_divergence), inputs=inputs)
+                self.add_loss(self.coeff_KL*K.mean(kl_divergence), inputs=inputs)
             if self.return_KL:
                 return z, kl_divergence
 

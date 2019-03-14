@@ -1,4 +1,3 @@
-from IPython.display import clear_output, set_matplotlib_formats
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, Input
 from tensorflow.keras.callbacks import Callback
@@ -10,12 +9,14 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import scipy
+from IPython.display import clear_output, set_matplotlib_formats
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def build_vae(encoder, decoder, full_cov=False):
+def build_vanilla_vae(encoder, decoder, full_cov=False, coeff_KL=1.0):
     input_vae = Input(shape=encoder.input.shape[1:])
     output_encoder = encoder(input_vae)
 
-    z, Dkl = layers.SampleMultivariateGaussian(full_cov=full_cov, add_KL=True, return_KL=True)(output_encoder)
+    z, Dkl = layers.SampleMultivariateGaussian(full_cov=full_cov, add_KL=True, return_KL=True, coeff_KL=coeff_KL)(output_encoder)
 
     vae = Model(input_vae, decoder(z))
     vae_utils = Model(input_vae, [*encoder(input_vae), z, Dkl, decoder(z)])
@@ -138,11 +139,22 @@ class VAEHistory(Callback):
         idx = np.random.randint(0,len(self.xval_sub))#, size=1)
         ax = axes[5]
         im = ax.imshow(self.xval_sub[idx][:,:,self.plot_bands])
+        if isinstance(self.plot_bands, int):
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            plt.colorbar(im, cax=cax)
         ax.set_title('input')
         ax.axis('off')
         
         ax = axes[6]
         im = ax.imshow(out[idx][:,:,self.plot_bands])
-        ax.set_title('input')
+        if isinstance(self.plot_bands, int):
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            plt.colorbar(im, cax=cax)
+        ax.set_title('output')
         ax.axis('off')
+        
+        plt.tight_layout()
+        plt.show()
 
