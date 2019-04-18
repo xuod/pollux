@@ -33,11 +33,12 @@ def vae_rec_loss(x, x_decoded_mean):
 
 
 class VAEHistory(Callback):
-    def __init__(self, xval_sub, vae_utils, latent_dim, plot_bands=[5,6,7]):
+    def __init__(self, xval_sub, vae_utils, latent_dim, plot_bands=[5,6,7], figname=None):
         self.xval_sub = xval_sub
         self.latent_dim = latent_dim
         self.plot_bands = plot_bands
         self.vae_utils = vae_utils
+        self.figname = figname
         
         self.counter = 0
         
@@ -101,9 +102,7 @@ class VAEHistory(Callback):
         clear_output(wait=True)
         
         fig, axes = plt.subplots(1, 7, figsize=(7*4,4))
-        
-#         axes = np.ravel(axes)
-        
+                
         ax = axes[0]
         ax.plot(self.loss, c='b', label='train')
         ax.plot(self.val_loss, c='r', label='val')
@@ -111,16 +110,10 @@ class VAEHistory(Callback):
         ax.set_xlabel('epoch')
         ax.set_title('Training/validation losses')
         
-#         def all_positive(list):
-#             return all([x>0. for x in list])
-#         if all_positive(self.loss) and all_positive(self.val_loss):
-#             ax.set_yscale('log')
-        
         ax = axes[1]
         ax.plot(self.D_KL)
         ax.set_xlabel('epoch')
         ax.set_title('D_KL')
-        #ax.set_ylim(np.min(self.D_KL), self.D_KL[0]*1.05)
 
         for dim in range(self.latent_dim):
             c = self.colors[dim]
@@ -130,13 +123,13 @@ class VAEHistory(Callback):
         
         axes[4].plot(self.zz, self.gauss, c='k')
         axes[4].set_xlim(-5,5)
-        #axes[3].set_xscale('log')
         
         axes[2].set_title('mu_y(X)')
         axes[3].set_title('sigma_y(X)')
         axes[4].set_title('z~N(0,1)')
         
         idx = np.random.randint(0,len(self.xval_sub))#, size=1)
+        
         ax = axes[5]
         im = ax.imshow(self.xval_sub[idx][:,:,self.plot_bands])
         if isinstance(self.plot_bands, int):
@@ -156,5 +149,11 @@ class VAEHistory(Callback):
         ax.axis('off')
         
         plt.tight_layout()
+        
+        if self.figname is not None:
+            fig.savefig(self.figname, dpi=300)
+        
         plt.show()
+        
+
 
