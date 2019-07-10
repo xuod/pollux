@@ -94,7 +94,7 @@ class SampleMultivariateGaussian(Layer):
     Samples from a multivariate Gaussian given a mean and a full covariance matrix or just diagonal std.
     """
 
-    def __init__(self, full_cov, add_KL, return_KL, coeff_KL=1.0, *args, **kwargs):
+    def __init__(self, add_KL, return_KL, full_cov=False, coeff_KL=1.0, *args, **kwargs):
         """
         full_cov: whether to use a full covariance matrix or just the diagonal.
         add_KL: boolean, whether to add the (sample average) KL divergence of the input distribution with respect to a standard Gaussian
@@ -113,6 +113,17 @@ class SampleMultivariateGaussian(Layer):
         super(SampleMultivariateGaussian,
               self).__init__(*args, **kwargs)
 
+    def build(self, input_shape):
+        print(input_shape)
+        if self.add_KL or self.return_KL:
+            if self.full_cov:
+                self.dist_0 = self.distrib(loc=tf.zeros(input_shape[0][1]), covariance_matrix=tf.eye(input_shape[0][1]))
+
+            else:
+                self.dist_0 = self.distrib(loc=tf.zeros(input_shape[0][1]), scale_diag=tf.ones(input_shape[0][1]))
+        super(SampleMultivariateGaussian, self).build(input_shape)  # Be sure to call this at the end
+
+
     def call(self, inputs):
         """
         inputs = if full_cov is True, [mu, cov] where mu is the mean vector and cov the covariance matrix, otherwise [mu,sigma] where sigma is the std.
@@ -120,20 +131,17 @@ class SampleMultivariateGaussian(Layer):
         if self.full_cov:
             z_mu, z_cov = inputs
             dist_z = self.distrib(loc=z_mu, covariance_matrix=z_cov)
-            dist_0 = self.distrib(
-                loc=tf.zeros_like(z_mu), covariance_matrix=tf.identity(z_cov))
+            # dist_0 = self.distrib(loc=tf.zeros_like(z_mu), covariance_matrix=tf.identity(z_cov))
 
         else:
             z_mu, z_sigma = inputs
             dist_z = self.distrib(loc=z_mu, scale_diag=z_sigma)
-            dist_0 = self.distrib(loc=tf.zeros_like(
-                z_mu), scale_diag=tf.ones_like(z_sigma))
+            # dist_0 = self.distrib(loc=tf.zeros_like(z_mu), scale_diag=tf.ones_like(z_sigma))
 
         z = dist_z.sample()
 
         if self.add_KL or self.return_KL:
-            kl_divergence = tfp.distributions.kl_divergence(
-                dist_z, dist_0, name='KL_divergence_full_cov')
+            kl_divergence = dist_z.kl_divergence(other=self.dist_0, name='KL_divergence')[:,None]
             if self.add_KL:
                 self.add_loss(self.coeff_KL*K.mean(kl_divergence), inputs=inputs)
             if self.return_KL:
@@ -145,7 +153,11 @@ class SampleMultivariateGaussian(Layer):
         """
         Same shape as the mean vector
         """
-        return input_shape[0]
+        # print("plop, input_shape")
+        if self.return_KL:
+            return (input_shape[0], input_shape[0])
+        else:
+            return input_shape[0]
 
 
 class FillLowerMatrix(Layer):
