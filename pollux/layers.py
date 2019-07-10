@@ -115,9 +115,10 @@ class SampleMultivariateGaussian(Layer):
 
     def build(self, input_shape):
         print(input_shape)
+        print(input_shape[0][1])
         if self.add_KL or self.return_KL:
             if self.full_cov:
-                self.dist_0 = self.distrib(loc=tf.zeros(input_shape[0][1]), covariance_matrix=tf.eye(input_shape[0][1]))
+                self.dist_0 = self.distrib(loc=tf.zeros(input_shape[0][1]), covariance_matrix=tf.eye(int(input_shape[0][1])))
 
             else:
                 self.dist_0 = self.distrib(loc=tf.zeros(input_shape[0][1]), scale_diag=tf.ones(input_shape[0][1]))
